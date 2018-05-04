@@ -93,6 +93,12 @@ import org.apache.calcite.util.Smalls;
 import org.apache.calcite.util.TryThreadLocal;
 import org.apache.calcite.util.Util;
 
+import org.apache.http.HttpStatus;
+import org.apache.http.entity.ContentType;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.bootstrap.HttpServer;
+import org.apache.http.impl.bootstrap.ServerBootstrap;
+
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.LinkedListMultimap;
 import com.google.common.collect.Multimap;
@@ -102,10 +108,17 @@ import org.hsqldb.jdbcDriver;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.math.BigDecimal;
+import java.net.URL;
+import java.net.URLConnection;
+import java.net.URLStreamHandler;
+import java.net.URLStreamHandlerFactory;
+import java.nio.charset.Charset;
 import java.sql.Array;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -133,6 +146,7 @@ import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 import java.util.TimeZone;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
 import javax.sql.DataSource;
@@ -5074,6 +5088,119 @@ public class JdbcTest {
             + "empid=110; deptno=10; name=Theodore; salary=11500.0; commission=250\n");
     that.query("select * from \"adhoc\".EMPLOYEES")
         .throws_("Object 'EMPLOYEES' not found within 'adhoc'");
+  }
+
+  /** Test case for
+   * <a href="https://issues.apache.org/jira/browse/CALCITE-2209">[CALCITE-2209]
+   * Model defined using built-in http scheme handler</a>. */
+  @Test public void testHTTPSchemeInModel() throws SQLException {
+    String modelPayload = "{\n"
+        + "  \"version\": \"1.0\",\n"
+        + "  \"defaultSchema\": \"adhoc\",\n"
+        + "  \"schemas\": [\n"
+        + "    {\n"
+        + "      \"name\": \"empty\"\n"
+        + "    },\n"
+        + "    {\n"
+        + "      \"name\": \"adhoc\",\n"
+        + "      \"type\": \"custom\",\n"
+        + "      \"factory\": \"" + MySchemaFactory.class.getName() + "\",\n"
+        + "      \"operand\": {\n"
+        + "        \"tableName\": \"ELVIS\"\n"
+        + "      }\n"
+        + "    }\n"
+        + "  ]\n"
+        + "}";
+    String path = "/json/model";
+    try {
+      HttpServer server = createHttpServer(modelPayload, path);
+      int port = server.getLocalPort();
+      final String url = "jdbc:calcite:model=" + "http://" + "localhost:" + port + path;
+      try (Connection c = DriverManager.getConnection(url);
+           Statement s = c.createStatement();
+           ResultSet r = s.executeQuery("values 1")) {
+        assertThat(r.next(), is(true));
+      } catch (Exception e) {
+        throw new SQLException(e);
+      } finally {
+        server.shutdown(5, TimeUnit.SECONDS);
+      }
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+      // http server not able to start, not necessarily a bug
+    }
+  }
+
+  private HttpServer createHttpServer(String jsonContent, String path)
+      throws IOException {
+    final HttpServer server = ServerBootstrap.bootstrap()
+            .setServerInfo("Test/1.1")
+            .registerHandler(path, (httpRequest, httpResponse, httpContext) -> {
+              httpResponse.setStatusCode(HttpStatus.SC_OK);
+              StringEntity body = new StringEntity(jsonContent, ContentType.APPLICATION_JSON);
+              httpResponse.setEntity(body);
+            })
+            .create();
+
+    server.start();
+
+    return server;
+  }
+
+  /** Test case for
+   * <a href="https://issues.apache.org/jira/browse/CALCITE-2209">[CALCITE-2209]
+   * Model defined using custom scheme handler</a>. */
+  @Test public void testCustomURLStreamHandlerInModel() throws SQLException {
+    URL.setURLStreamHandlerFactory(new CustomURLStreamHandlerFactory());
+    final String url = "jdbc:calcite:model=custom://some_path";
+    try (Connection c = DriverManager.getConnection(url);
+         Statement s = c.createStatement();
+         ResultSet r = s.executeQuery("values 1")) {
+      assertThat(r.next(), is(true));
+    } catch (Exception e) {
+      throw new SQLException(e);
+    }
+  }
+
+  /**
+   * Custom scheme handler factory for creating dummy URLStreamHandler.
+   */
+  private class CustomURLStreamHandlerFactory implements URLStreamHandlerFactory {
+    private final String modelPayload = "{\n"
+        + "  \"version\": \"1.0\",\n"
+        + "  \"defaultSchema\": \"adhoc\",\n"
+        + "  \"schemas\": [\n"
+        + "    {\n"
+        + "      \"name\": \"empty\"\n"
+        + "    },\n"
+        + "    {\n"
+        + "      \"name\": \"adhoc\",\n"
+        + "      \"type\": \"custom\",\n"
+        + "      \"factory\": \"" + MySchemaFactory.class.getName() + "\",\n"
+        + "      \"operand\": {\n"
+        + "        \"tableName\": \"ELVIS\"\n"
+        + "      }\n"
+        + "    }\n"
+        + "  ]\n"
+        + "}";
+    @Override public URLStreamHandler createURLStreamHandler(String protocol) {
+      if (protocol.equals("custom")) {
+        return new URLStreamHandler() {
+          @Override protected URLConnection openConnection(URL u) throws IOException {
+            return new URLConnection(u) {
+              @Override public void connect() throws IOException {
+                return;
+              }
+              @Override public InputStream getInputStream() throws IOException {
+                return new ByteArrayInputStream(modelPayload.getBytes(Charset.defaultCharset()));
+              }
+            };
+          }
+        };
+      } else {
+        return null;
+      }
+    }
   }
 
   /** Test case for
