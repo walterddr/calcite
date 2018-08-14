@@ -33,6 +33,7 @@ import org.apache.calcite.schema.Statistics;
 import org.apache.calcite.schema.impl.AbstractSchema;
 import org.apache.calcite.sql.SqlCall;
 import org.apache.calcite.sql.SqlNode;
+import org.apache.calcite.sql.type.BasicSqlType;
 import org.apache.calcite.sql.type.SqlTypeName;
 
 import org.junit.Test;
@@ -270,6 +271,26 @@ public class CollectionTypeTest {
   }
 
   @Test
+  public void testNestedStructTypeSelect() throws Exception {
+
+    Connection connection = setupConnectionWithNestedTable();
+
+    final Statement statement = connection.createStatement();
+
+    final String errorSQL = "select \"SINGLERECORDFIELD\" AS \"myField\" "
+        + "from \"s\".\"nested\" ";
+    statement.executeQuery(errorSQL);
+
+    final String correctSQL1 = "select \"MULTIRECORDFIELD\" AS \"myField\" "
+        + "from \"s\".\"nested\" ";
+    statement.executeQuery(correctSQL1);
+
+    final String correctSQL2 = "select \"SINGLERECORDFIELD\" "
+        + "from \"s\".\"nested\" ";
+    statement.executeQuery(correctSQL2);
+  }
+
+  @Test
   public void testNestedArrayOutOfBoundAccessWithAnyType() throws Exception {
     Connection connection = setupConnectionWithNestedTable();
 
@@ -387,6 +408,20 @@ public class CollectionTypeTest {
           .add("STRINGARRAYFIELD", typeFactory
               .createTypeWithNullability(
                   typeFactory.createArrayType(nullableVarcharType, -1L), true))
+          .add("SINGLERECORDFIELD", typeFactory
+              .createTypeWithNullability(
+                  typeFactory.createStructType(
+                      Arrays.asList(
+                          typeFactory.createSqlType(SqlTypeName.INTEGER)),
+                      Arrays.asList("intField")), true))
+          .add("MULTIRECORDFIELD", typeFactory
+              .createTypeWithNullability(
+                  typeFactory.createStructType(
+                      Arrays.asList(
+                          typeFactory.createSqlType(SqlTypeName.INTEGER),
+                          typeFactory.createSqlType(SqlTypeName.BIGINT)),
+                      Arrays.asList("intField", "bigintField")
+                  ), true))
           .build();
     }
 
