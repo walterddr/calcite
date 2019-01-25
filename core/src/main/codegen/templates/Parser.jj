@@ -3007,7 +3007,7 @@ void Expression2b(ExprContext exprContext, List<Object> list) :
 {
     SqlNode e;
     SqlOperator op;
-    String p;
+    SqlNode ext;
 }
 {
     (
@@ -3021,11 +3021,11 @@ void Expression2b(ExprContext exprContext, List<Object> list) :
     }
     (
         <DOT>
-        p = Identifier() {
+        ext = RowExpressionExtension() {
             list.add(
                 new SqlParserUtil.ToTreeListItem(
                     SqlStdOperatorTable.DOT, getPos()));
-            list.add(new SqlIdentifier(p, getPos()));
+            list.add(ext);
         }
     )*
 }
@@ -3378,6 +3378,70 @@ SqlNode UnsignedNumericLiteralOrParam() :
         e = DynamicParam()
     )
     { return e; }
+}
+
+/**
+ * Parse a row expression extended after an existing record type row expression
+ */
+SqlNode RowExpressionExtension() :
+{
+    final SqlNode e;
+    String p;
+}
+{
+    (
+        LOOKAHEAD( CompoundIdentifier() <LPAREN>)
+        e = NamedMemberFunctionCall()
+    |
+        p = Identifier() {
+            return new SqlIdentifier(p, getPos());
+        }
+    |
+        e = CompoundIdentifier()
+    )
+    { return e; }
+}
+
+/**
+ * Parses a call to a named function of a specific type (a UDF).
+ */
+SqlNode NamedMemberFunctionCall() :
+{
+    final SqlFunctionCategory funcType;
+    final SqlIdentifier qualifiedName;
+    final Span s;
+    final List<SqlNode> args;
+    SqlCall call;
+    SqlLiteral quantifier = null;
+}
+{
+    {
+        funcType = SqlFunctionCategory.USER_DEFINED_FUNCTION;
+    }
+    qualifiedName = CompoundIdentifier() {
+        s = span();
+    }
+    (
+        LOOKAHEAD(2) <LPAREN> <STAR> {
+            args = startList(SqlIdentifier.star(getPos()));
+        }
+        <RPAREN>
+    |
+        LOOKAHEAD(2) <LPAREN> <RPAREN> {
+            args = Collections.emptyList();
+        }
+    |
+        args = FunctionParameterList(ExprContext.ACCEPT_SUB_QUERY) {
+            quantifier = (SqlLiteral) args.get(0);
+            args.remove(0);
+        }
+    )
+    {
+        call = createCall(qualifiedName, s.end(this), funcType, quantifier, args);
+    }
+    {
+        return call;
+    }
 }
 
 /**
