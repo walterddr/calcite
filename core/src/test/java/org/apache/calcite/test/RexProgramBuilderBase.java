@@ -264,6 +264,10 @@ public abstract class RexProgramBuilderBase {
     return rexBuilder.makeCast(type, e);
   }
 
+  protected RexNode as(RexNode n1, RexNode n2) {
+    return rexBuilder.makeCall(SqlStdOperatorTable.AS, n1, n2);
+  }
+
   protected RexNode eq(RexNode n1, RexNode n2) {
     return rexBuilder.makeCall(SqlStdOperatorTable.EQUALS, n1, n2);
   }

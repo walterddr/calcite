@@ -283,9 +283,19 @@ public class RexSimplify {
     case LESS_THAN_OR_EQUAL:
     case NOT_EQUALS:
       return simplifyComparison((RexCall) e, unknownAs);
+    case AS:
+      return simplifyAs((RexCall) e, unknownAs);
     default:
       return e;
     }
+  }
+
+  private RexNode simplifyAs(RexCall e, RexUnknownAs unknownAs) {
+    final List<RexNode> operands = new ArrayList<>();
+    operands.add(simplify(e.getOperands().get(0), unknownAs));
+    operands.add(e.getOperands().get(1));
+    return rexBuilder.makeCall(SqlStdOperatorTable.AS,
+        operands);
   }
 
   // e must be a comparison (=, >, >=, <, <=, !=)

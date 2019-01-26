@@ -2413,6 +2413,17 @@ public class RexProgramTest extends RexProgramBuilderBase {
         "IS NOT NULL(?0.int2)");
   }
 
+  @Test public void testSimplifyAs() {
+    simplify = simplify.withParanoid(false);
+    final RexNode literalAsName = rexBuilder.makeLiteral("asName");
+    final RelDataType intType = typeFactory.createSqlType(SqlTypeName.INTEGER);
+    final RexNode literalOne = rexBuilder.makeLiteral(1, intType, true);
+    RexNode node = rexBuilder.makeCall(intType, SqlStdOperatorTable.CAST, ImmutableList.of(literalOne));
+    checkSimplify(node, "1");
+    checkSimplify(as(node, literalAsName),
+        "AS(1, 'asName')");
+  }
+
   @Test public void testSimplifyOrNot() {
     // "x > 1 OR NOT (y > 2)" -> "x > 1 OR y <= 2"
     checkSimplify(or(gt(vInt(1), literal(1)), not(gt(vInt(2), literal(2)))),
