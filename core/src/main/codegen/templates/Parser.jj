@@ -3396,8 +3396,6 @@ SqlNode RowExpressionExtension() :
         p = Identifier() {
             return new SqlIdentifier(p, getPos());
         }
-    |
-        e = CompoundIdentifier()
     )
     { return e; }
 }
