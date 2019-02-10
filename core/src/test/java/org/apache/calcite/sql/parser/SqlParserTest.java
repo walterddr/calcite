@@ -7369,7 +7369,7 @@ public class SqlParserTest {
         "SELECT `TBL`.`MYCOLUMN`.`MYSUBFIELD`.`FUNC`()\n"
             + "FROM `TBL`");
     check("SELECT tbl.foo(0).col.bar(2, 3) FROM tbl",
-        "SELECT (`TBL`.`FOO`(0).`COL`.`BAR`(2, 3))\n"
+        "SELECT ((`TBL`.`FOO`(0).`COL`).`BAR`(2, 3))\n"
             + "FROM `TBL`");
   }
 
