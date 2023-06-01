@@ -180,7 +180,7 @@ public abstract class SemiJoinRule
     public interface AggregateToSemiJoinRuleConfig extends SemiJoinRule.Config {
       AggregateToSemiJoinRuleConfig DEFAULT = ImmutableAggregateToSemiJoinRuleConfig.of()
           .withDescription("SemiJoinRule:project")
-          .withOperandFor(Project.class, Join.class, Aggregate.class);
+          .withOperandFor(Aggregate.class, Join.class, Aggregate.class);
 
       @Override default AggregateToSemiJoinRule toRule() {
         return new AggregateToSemiJoinRule(this);
