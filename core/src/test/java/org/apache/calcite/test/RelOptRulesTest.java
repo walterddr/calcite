@@ -6070,6 +6070,13 @@ class RelOptRulesTest extends RelOptTestBase {
     checkSemiJoinRuleOnAntiJoin(CoreRules.PROJECT_TO_SEMI_JOIN);
   }
 
+  /** Test case for
+   * <a href="https://issues.apache.org/jira/browse/CALCITE-4621">[CALCITE-4621]
+   * SemiJoinRule throws AssertionError on ANTI join</a>. */
+  @Test void testAggregateToSemiJoinRuleOnAntiJoin() {
+    checkSemiJoinRuleOnAntiJoin(CoreRules.AGGREGATE_TO_SEMI_JOIN);
+  }
+
   private void checkSemiJoinRuleOnAntiJoin(RelOptRule rule) {
     final Function<RelBuilder, RelNode> relFn = b -> b
         .scan("DEPT")
