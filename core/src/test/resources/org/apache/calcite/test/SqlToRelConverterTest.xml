@@ -2697,6 +2697,18 @@ LogicalProject(SAL=[$0])
 ]]>
     </Resource>
   </TestCase>
+  <TestCase name="testHistogramAgg">
+    <Resource name="sql">
+      <![CDATA[select $histogram(deptno, 16) from emp]]>
+    </Resource>
+    <Resource name="plan">
+      <![CDATA[
+LogicalAggregate(group=[{}], EXPR$0=[$HISTOGRAM($0)])
+  LogicalProject(DEPTNO=[$7])
+    LogicalTableScan(table=[[CATALOG, SALES, EMP]])
+]]>
+    </Resource>
+  </TestCase>
   <TestCase name="testHopTable">
     <Resource name="sql">
       <![CDATA[select stream hop_start(rowtime, interval '1' hour, interval '3' hour) as rowtime,

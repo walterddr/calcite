@@ -23,6 +23,7 @@ import org.apache.calcite.sql.SqlFunctionCategory;
 import org.apache.calcite.sql.SqlKind;
 import org.apache.calcite.sql.type.OperandTypes;
 import org.apache.calcite.sql.type.ReturnTypes;
+import org.apache.calcite.sql.type.SqlTypeFamily;
 import org.apache.calcite.util.Optionality;
 
 import com.google.common.collect.ImmutableList;
@@ -51,7 +52,9 @@ public class SqlHistogramAggFunction extends SqlAggFunction {
         SqlKind.OTHER_FUNCTION,
         ReturnTypes.HISTOGRAM,
         null,
-        OperandTypes.NUMERIC_OR_STRING,
+        OperandTypes.family(
+            ImmutableList.of(SqlTypeFamily.NUMERIC, SqlTypeFamily.NUMERIC),
+            ordinal -> ordinal > 1),
         SqlFunctionCategory.NUMERIC,
         false,
         false,

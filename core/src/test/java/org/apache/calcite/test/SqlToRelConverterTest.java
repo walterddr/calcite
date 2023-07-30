@@ -2576,6 +2576,11 @@ class SqlToRelConverterTest extends SqlToRelTestBase {
     sql(sql).ok();
   }
 
+  @Test void testHistogramAgg() {
+    final String sql = "select $histogram(deptno) from emp";
+    sql(sql).ok();
+  }
+
   @Test void testHopTable() {
     final String sql = "select stream hop_start(rowtime, interval '1' hour,"
         + " interval '3' hour) as rowtime,\n"
